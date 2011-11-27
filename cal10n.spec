@@ -1,6 +1,6 @@
 Name:           cal10n
 Version:        0.7.4
-Release:        5
+Release:        7
 Summary:        Compiler assisted localization library (CAL10N)
 
 Group:          Development/Java
