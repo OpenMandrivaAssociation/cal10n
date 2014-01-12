@@ -1,36 +1,19 @@
+%{?_javapackages_macros:%_javapackages_macros}
 Name:           cal10n
-Version:        0.7.4
-Release:        7
+Version:        0.7.7
+Release:        3.1%{?dist}
 Summary:        Compiler assisted localization library (CAL10N)
-
-Group:          Development/Java
 License:        MIT
 URL:            http://cal10n.qos.ch
-Source0:        http://cal10n.qos.ch/dist/cal10n-%{version}.tar.gz
-Patch0:         %{name}-fix-maven.patch
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+Source0:        http://cal10n.qos.ch/dist/%{name}-%{version}.tar.gz
+BuildArch:      noarch
 
-BuildArch: noarch
-
-BuildRequires: junit4
-BuildRequires: java-devel >= 0:1.6.0
-BuildRequires: maven2
-BuildRequires: maven-assembly-plugin
-BuildRequires: maven-compiler-plugin
-BuildRequires: maven-install-plugin
-BuildRequires: maven-jar-plugin
-BuildRequires: maven-javadoc-plugin
-BuildRequires: maven-plugin-plugin
-BuildRequires: maven-resources-plugin
-BuildRequires: maven-source-plugin
-BuildRequires: maven-doxia-sitetools
-BuildRequires: maven-site-plugin
-BuildRequires: maven-surefire-maven-plugin
-BuildRequires: maven-surefire-provider-junit4
-
-Requires:      java
-Requires(post):   jpackage-utils >= 1.7.3
-Requires(postun): jpackage-utils >= 1.7.3
+BuildRequires:  maven-local
+BuildRequires:  mvn(org.apache.maven.plugins:maven-site-plugin)
+BuildRequires:  mvn(org.apache.maven.plugins:maven-source-plugin)
+BuildRequires:  mvn(org.apache.maven:maven-artifact)
+BuildRequires:  mvn(org.apache.maven:maven-artifact-manager)
+BuildRequires:  mvn(org.apache.maven:maven-plugin-api)
 
 %description
 Compiler Assisted Localization, abbreviated as CAL10N (pronounced as "calion") 
@@ -45,88 +28,104 @@ Features:
 
 
 %package javadoc
-Group:          Development/Java
-Summary:        Javadoc for %{name}
-Requires:       jpackage-utils
+Summary:        API documentation for %{name}
 
 %description javadoc
-API documentation for %{name}.
+%{summary}.
 
-%package -n maven-cal10n-plugin
-Summary:    CAL10N maven plugin
-Group:      Development/Java
-Requires:   maven2
-Requires:   %{name} = %{version}-%{release}
+%package -n maven-%{name}-plugin
+Summary:        CAL10N maven plugin
 
-%description -n maven-cal10n-plugin
+%description -n maven-%{name}-plugin
 Maven plugin verifying that the codes defined in
 an enum type match those in the corresponding resource bundles. 
 
 %prep
 %setup -q 
-find . -name "*.jar" | xargs rm
-%patch0
+find . -name \*.jar -delete
+%pom_add_dep org.apache.maven:maven-artifact maven-%{name}-plugin
+%pom_disable_module %{name}-site
+%pom_disable_module maven-%{name}-plugin-smoke
+%mvn_package :*-{plugin} @1
 
 %build
-mvn-jpp \
-        -e \
-        -Dmaven2.jpp.mode=true \
-        -Dmaven.test.failure.ignore=true \
-        install javadoc:aggregate
+%mvn_build -- -Dproject.build.sourceEncoding=ISO-8859-1
 
 %install
+%mvn_install
 
-# jars
-install -d -m 0755 %{buildroot}%{_javadir}/%{name}
-install -m 644 cal10n-api/target/cal10n-api-%{version}.jar \
-        %{buildroot}%{_javadir}/%{name}/cal10n-api.jar
-install -m 644 maven-cal10n-plugin/target/maven-cal10n-plugin-%{version}.jar \
-        %{buildroot}%{_javadir}/%{name}/maven-cal10n-plugin.jar
-
-
-%add_to_maven_depmap ch.qos.cal10n cal10n-parent %{version} JPP/%{name} cal10n-parent
-%add_to_maven_depmap ch.qos.cal10n cal10n-api %{version} JPP/%{name} cal10n-api
-%add_to_maven_depmap ch.qos.cal10n maven-cal10n-plugin %{version} JPP/%{name} maven-cal10n-plugin
-
-# poms
-install -d -m 755 %{buildroot}%{_mavenpomdir}
-install -pm 644 pom.xml \
-    %{buildroot}%{_mavenpomdir}/JPP.%{name}-%{name}-parent.pom
-install -pm 644 cal10n-api/pom.xml \
-    %{buildroot}%{_mavenpomdir}/JPP.%{name}-%{name}-api.pom
-install -pm 644 maven-cal10n-plugin/pom.xml \
-    %{buildroot}%{_mavenpomdir}/JPP.%{name}-maven-cal10n-plugin.pom
-
-# javadoc
-install -d -m 0755 %{buildroot}%{_javadocdir}/%{name}
-cp -pr target/site/api*/* %{buildroot}%{_javadocdir}/%{name}
-
-%post
-%update_maven_depmap
-
-%postun
-%update_maven_depmap
-
-%pre javadoc
-# workaround for rpm bug 646523
-[ $1 -gt 1 ] && [ -L %{_javadocdir}/%{name} ] && \
-rm -rf $(readlink -f %{_javadocdir}/%{name}) %{_javadocdir}/%{name} || :
-
-
-%files
-%defattr(-,root,root,-)
+%files -f .mfiles
 %dir %{_javadir}/%{name}
-%{_javadir}/%{name}/%{name}*.jar
-%{_mavenpomdir}/JPP.%{name}-%{name}-parent*
-%{_mavenpomdir}/JPP.%{name}-%{name}-api*
-%{_mavendepmapfragdir}/%{name}
+%doc LICENSE.txt
 
-%files -n maven-cal10n-plugin
-%defattr(-,root,root,-)
-%{_javadir}/%{name}/maven*.jar
-%{_mavenpomdir}/JPP.%{name}-maven*
+%files -n maven-%{name}-plugin -f .mfiles-plugin
 
-%files javadoc
-%defattr(-,root,root,-)
-%{_javadocdir}/%{name}
+%files javadoc -f .mfiles-javadoc
+%doc LICENSE.txt
 
+%changelog
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.7.7-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Fri Jun 14 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.7.7-2
+- Simplify BuildRequires
+- Convert patch to POM macro
+- Update to current packaging guidelines
+
+* Wed Mar 20 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.7.7-1
+- Update to upstream version 0.7.7
+
+* Fri Mar 15 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.7.6-1
+- Update to upstream version 0.7.6
+
+* Wed Feb 27 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.7.5-1
+- Update to upstream version 0.7.5
+- A maintenance release containing only minor fixes
+
+* Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.7.4-12
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
+* Wed Feb 06 2013 Java SIG <java-devel@lists.fedoraproject.org> - 0.7.4-11
+- Update for https://fedoraproject.org/wiki/Fedora_19_Maven_Rebuild
+- Replace maven BuildRequires with maven-local
+
+* Thu Aug 16 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.7.4-10
+- Install LICENSE file
+- Remove rpm bug workaround
+
+* Wed Jul 18 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.7.4-9
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
+
+* Sat Jan 28 2012 Alexander Kurtakov <akurtako@redhat.com> 0.7.4-8
+- Fix for OpenJDK 7 build.
+- Adapt to current guidelines.
+
+* Thu Jan 12 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.7.4-7
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Wed Jun 8 2011 Alexander Kurtakov <akurtako@redhat.com> 0.7.4-6
+- Build with maven 3.x.
+
+* Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.7.4-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Thu Nov 25 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 0.7.4-4
+- Fix pom filenames (Resolves rhbz#655792)
+- Add several packages to Requires
+- Remove versioned jars and javadocs
+
+* Wed Sep 8 2010 Alexander Kurtakov <akurtako@redhat.com> 0.7.4-3
+- Fix build failure (javadoc:aggregate).
+
+* Mon Jul 19 2010 Alexander Kurtakov <akurtako@redhat.com> 0.7.4-2
+- BR maven-site-plugin.
+
+* Mon Jul 19 2010 Alexander Kurtakov <akurtako@redhat.com> 0.7.4-1
+- Update to 0.7.4.
+
+* Wed Feb 3 2010 Alexander Kurtakov <akurtako@redhat.com> 0.7.2-2
+- Removed not needed external repo definitions.
+- Use _mavenpomdir.
+
+* Wed Feb 3 2010 Alexander Kurtakov <akurtako@redhat.com> 0.7.2-1
+- Initial package
