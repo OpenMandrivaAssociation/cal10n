@@ -4,7 +4,7 @@ Version:        0.7.7
 Release:        3.1%{?dist}
 Summary:        Compiler assisted localization library (CAL10N)
 License:        MIT
-URL:            http://cal10n.qos.ch
+URL:            https://cal10n.qos.ch
 Source0:        http://cal10n.qos.ch/dist/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
